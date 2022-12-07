@@ -6,7 +6,7 @@ from fastapi import File
 from os import getcwd
 
 # Local
-from modules.image import create_data_object
+from modules.image import validate_data
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
@@ -25,6 +25,6 @@ async def get_image(image: UploadFile = File(...)):
     return {"message": "success"}
   
 @router.get(path='/prueba')
-async def prueba():
-  create_data_object()
+def prueba():
+   validate_data()
   
