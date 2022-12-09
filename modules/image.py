@@ -1,8 +1,17 @@
 from easyocr import easyocr
 import cv2
+import requests
 from os import path, listdir, remove
 
-# remove(f'{abs_image_dir}/{last_image}')
+url_loyalty_ws = "http://10.50.22.210:8980/geoloyalty-mobile-service/mobile/client/getClient"
+
+
+def filter_data(data: str):
+    data_filter = data.find(":")
+    if data_filter != -1:
+        new_data = data[data_filter + 1 :]
+        return new_data
+    return data
 
 
 def validate_image_dir():
@@ -32,6 +41,7 @@ def create_data_object():
     data = read_image()
     data_list = data[0]
     image_path = data[1]
+    print(data_list)
     position = 0
     data_object = {}
     for data in data_list[0:25]:
@@ -43,17 +53,25 @@ def create_data_object():
         elif "dula" in data:
             data_object["num_documento"] = data_list[position]
         elif "nombre:" in data:
+            filter_data(data=data)
             data_object["nombre"] = data
         elif "ape" in data:
+            filter_data(data=data)
             data_object["apellido"] = data
         elif "celular" in data:
+            filter_data(data=data)
             data_object["telefono"] = data
         elif "vendedor" in data:
+            filter_data(data=data)
             data_object["vendedor"] = data
     return data_object, image_path
 
 
-def validate_data():
+def validate_data_loyalty():
     data = create_data_object()
-    #remove(data[1])
-    print(data[0])
+    customer_data = data[0]
+    data_to_send = {"sourceType": "POS", "docType": "CC", "docNumber": customer_data['num_documento']}
+    response = requests.post(url=url_loyalty_ws, json=data_to_send)
+    print(response.json())
+    # remove(data[1])
+    print(data_to_send)
