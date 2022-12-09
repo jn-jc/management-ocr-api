@@ -41,7 +41,6 @@ def create_data_object():
     data = read_image()
     data_list = data[0]
     image_path = data[1]
-    print(data_list)
     position = 0
     data_object = {}
     for data in data_list[0:25]:
@@ -70,8 +69,10 @@ def create_data_object():
 def validate_data_loyalty():
     data = create_data_object()
     customer_data = data[0]
-    data_to_send = {"sourceType": "POS", "docType": "CC", "docNumber": customer_data['num_documento']}
-    response = requests.post(url=url_loyalty_ws, json=data_to_send)
-    print(response.json())
+    data_to_send = {"sourceType": "POS", "docType": "CI", "docNumber": '1045685497'}
+    res = requests.post(url=url_loyalty_ws, json=data_to_send)
+    res_code = res.json()
+    print(res_code['response'])
+    # if response.responseCode == 200:
+    #   print(response.json())
     # remove(data[1])
-    print(data_to_send)
