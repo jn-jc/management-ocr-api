@@ -1,15 +1,17 @@
 from easyocr import easyocr
+from fastapi import HTTPException
 import cv2
 import requests
 from os import path, listdir, remove
+from models.cliente_model import ClienteModel
 
-url_loyalty_ws = "http://10.50.22.210:8980/geoloyalty-mobile-service/mobile/client/getClient"
-
+URL_LOYALTY_WS = "http://10.50.22.210:8980/geoloyalty-mobile-service/mobile/client/getClient"
 
 def filter_data(data: str):
     data_filter = data.find(":")
     if data_filter != -1:
         new_data = data[data_filter + 1 :]
+        print(new_data)
         return new_data
     return data
 
@@ -42,7 +44,7 @@ def create_data_object():
     data_list = data[0]
     image_path = data[1]
     position = 0
-    data_object = {}
+    data_object: ClienteModel
     for data in data_list[0:25]:
         position += 1
         if "club cruz verde" in data or "dermo" in data:
@@ -52,27 +54,32 @@ def create_data_object():
         elif "dula" in data:
             data_object["num_documento"] = data_list[position]
         elif "nombre:" in data:
-            filter_data(data=data)
-            data_object["nombre"] = data
+            data_filter = filter_data(data=data)
+            data_object["nombre"] = data_filter
         elif "ape" in data:
-            filter_data(data=data)
-            data_object["apellido"] = data
-        elif "celular" in data:
-            filter_data(data=data)
-            data_object["telefono"] = data
+            data_filter = filter_data(data=data)
+            data_object["apellido"] = data_filter
         elif "vendedor" in data:
-            filter_data(data=data)
-            data_object["vendedor"] = data
+            data_filter = filter_data(data=data)
+            data_object["vendedor"] = data_filter
     return data_object, image_path
 
 
 def validate_data_loyalty():
     data = create_data_object()
     customer_data = data[0]
-    data_to_send = {"sourceType": "POS", "docType": "CI", "docNumber": '1045685497'}
-    res = requests.post(url=url_loyalty_ws, json=data_to_send)
-    res_code = res.json()
-    print(res_code['response'])
-    # if response.responseCode == 200:
-    #   print(response.json())
-    # remove(data[1])
+    print(customer_data)
+    if 'num_documento' in customer_data:
+      data_to_send = {"sourceType": "POS", "docType": "CC", "docNumber": customer_data['num_documento']}
+      try:
+        res = requests.post(url=URL_LOYALTY_WS, json=data_to_send)
+        res = res.json()
+        response_code = res['response']
+        if response_code['responseCode'] == 0:
+          print(res['client'])
+        else:
+          print('El usuario no se encuentra en la base de datos de loyalty')
+      except HTTPException as httperror :
+        print(httperror)
+    print(customer_data)
+   

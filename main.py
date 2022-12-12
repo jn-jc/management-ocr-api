@@ -2,8 +2,8 @@
 from fastapi import FastAPI
 
 #Local packages
-from routes import images
+from routes.images import image
 
 app = FastAPI()
 
-app.include_router(prefix='/api', router=images.router)
+app.include_router(prefix='/api', router=image)
