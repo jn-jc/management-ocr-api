@@ -7,7 +7,6 @@ from models.cliente_model import ClienteModel
 class ImageModel(BaseModel):
     id_imagen: Optional[int] = None
     id_usuario: int
-    id_plan_cliente: Optional[PlanClienteModel.id_plan_cliente] = None
-    id_cliente: ClienteModel.id_cliente
+    id_registro: int
     nombre_archivo: str
     path_archivo: str

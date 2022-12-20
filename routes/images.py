@@ -6,7 +6,7 @@ from fastapi import File
 from os import getcwd
 
 # Local
-from modules.image import validate_data_loyalty
+from modules.image import get_data
 
 image = APIRouter(prefix="/images", tags=["Images"])
 
@@ -26,5 +26,5 @@ async def get_image(image: UploadFile = File(...)):
   
 @image.get(path='/prueba')
 def prueba():
-   validate_data_loyalty()
+   get_data()
   
