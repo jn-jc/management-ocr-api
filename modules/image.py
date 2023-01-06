@@ -112,6 +112,7 @@ def get_data():
     data_dir = listdir(abs_image_dir)
     image_to_save: ImageModel = {}
     while len(data_dir) > 0:
+        print('Cargando imagen...')
         image_to_pop = data_dir.pop()
         id_user = get_user_id(image_to_pop)
         last_image_path = f"{abs_image_dir}/{image_to_pop}"
@@ -120,8 +121,7 @@ def get_data():
         data_to_validate = create_data_object(ocr_data)
         if (
             "num_documento" in data_to_validate
-            and data_to_validate["num_documento"] != "" 
-            "programa" in data_to_validate
+            and data_to_validate["num_documento"] != "" "programa" in data_to_validate
             and data_to_validate["programa"] != ""
         ):
             data_from_loyalty = validate_data_loyalty(data_to_validate)
@@ -136,7 +136,7 @@ def get_data():
             }
             update_register(id_registro, update_register_data)
             if customer_data_loyalty != False:
-                file_name = f"CC_{customer_data_loyalty['num_documento']}-{data_to_validate['programa']}"
+                file_name = f"CC_{customer_data_loyalty['num_documento']}-{data_to_validate['programa']}.jpg"
                 dir_destination = "coincide"
                 upload_file(
                     file_name=file_name,
@@ -155,7 +155,7 @@ def get_data():
             dir_destination = "no_data"
             path_ftp_file = get_path_files(dir_destination, image_to_pop)
             upload_file(
-                file_name=image_to_pop,
+                file_name=f"{image_to_pop}.jpg",
                 file_path=last_image_path,
                 destination_dir=dir_destination,
             )
@@ -167,3 +167,4 @@ def get_data():
             }
             create_image(image_to_save)
         remove(last_image_path)
+    print("La imagen se proceso correctamente")

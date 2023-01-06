@@ -1,6 +1,7 @@
 # FastAPI
 from fastapi import APIRouter, UploadFile
 from fastapi import File
+from multiprocessing import Process
 
 # Python
 from os import getcwd
@@ -10,11 +11,7 @@ from modules.image import get_data
 
 image = APIRouter(prefix="/images", tags=["Images"])
 
-
-@image.get(path="/")
-async def home_images():
-    return {"message": "Hello world from api images"}
-
+process = Process(target=get_data)
 
 @image.post(path="/get-image")
 async def get_image(image: UploadFile = File(...)):
@@ -22,9 +19,6 @@ async def get_image(image: UploadFile = File(...)):
         content = image.file.read()
         file.write(content)
         file.close()
+    process.start()
     return {"message": "success"}
-  
-@image.get(path='/prueba')
-def prueba():
-   get_data()
-  
+
