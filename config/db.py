@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, MetaData
 USER_DB: str = "root"
 PASS_DB: str = "root123"
 HOST_DB: str = "localhost"
-PORT_DB: str = "3309"
+PORT_DB: str = "3306"
 DATABASE: str = "back_office_bd"
 
 engine = create_engine(
