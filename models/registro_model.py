@@ -7,3 +7,4 @@ class RegistroModel(BaseModel):
   no_doc_cliente: Optional[str] = None
   id_estado: int
   fecha_registro: datetime
+  firma: int

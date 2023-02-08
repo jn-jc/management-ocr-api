@@ -19,6 +19,5 @@ async def get_image(image: UploadFile = File(...)):
         content = image.file.read()
         file.write(content)
         file.close()
-    process.start()
-    return {"message": "success"}
+    return get_data()
 

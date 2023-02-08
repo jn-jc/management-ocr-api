@@ -9,4 +9,6 @@ registro = Table(
     Column("no_doc_cliente", String(255), ForeignKey('cliente.num_documento')),
     Column("id_estado", Integer, ForeignKey('estado.id_estado')),
     Column("fecha_registro", TIMESTAMP),
+    Column("fecha_inscripcion", String(255)),
+    Column("firma", Integer)
 )

@@ -1,20 +1,19 @@
-from easyocr import easyocr
-from fastapi import HTTPException
+import os
+from os import listdir, path, remove
+
 import cv2
 import requests
-from os import path, listdir, remove
-from models.getData_model import GetDataModel
-from models.cliente_model import ClienteModel
-from models.registro_model import RegistroModel
-from models.image_model import ImageModel
-import os
 from dotenv import load_dotenv
-from modules.querys_db.registro.create_register import create_register
-from modules.querys_db.registro.update_register import update_register
-from modules.ftp_module.ftp import upload_file, get_path_files
-from modules.querys_db.imagen.create_image import create_image
+from easyocr import easyocr
+from fastapi import HTTPException
+
+from models.getData_model import GetDataModel
+from modules.ftp_module.ftp import get_path_files, upload_file
 from modules.querys_db.clientes.create_customer import create_customer
-from modules.querys_db.plan_clientes.create_plan_clientes import create_plan_cliente
+from modules.querys_db.imagen.create_image import create_image
+from modules.querys_db.registro.create_register import (create_register,
+                                                        delete_register)
+from modules.querys_db.registro.update_register import update_register
 
 load_dotenv()
 
@@ -49,22 +48,23 @@ def read_image(img_path: str):
 
 def create_data_object(data_ocr: list):
     position = 0
-    data_to_validate: GetDataModel = {}
+    data_to_validate = {}
     document_number = ""
     for data in data_ocr[0:10]:
         position += 1
-        if "club cruz verde" in data:
-            data_to_validate["programa"] = "CCV"
-        elif "dermo" in data:
-            data_to_validate["programa"] = "CDC"
-        elif "ipcion" in data or "ipción" in data:
+        if "ipcion" in data or "ipción" in data:
             data_to_validate["fecha_inscripcion"] = data_ocr[position]
         elif "dula" in data:
             for number in data_ocr[position]:
                 if number.isdigit():
                     document_number += number
             data_to_validate["num_documento"] = document_number
-    return data_to_validate
+    for data_firma in data_ocr[len(data_ocr) - 25 : len(data_ocr)]:
+        if "firma:" in data_firma or "firma" in data_firma:
+            firma = 1
+        else:
+            firma = 0
+    return data_to_validate, firma
 
 
 def validate_data_loyalty(data_to_validate: GetDataModel):
@@ -78,28 +78,16 @@ def validate_data_loyalty(data_to_validate: GetDataModel):
         res = res.json()
         response_code = res["response"]
         if response_code["responseCode"] == 0:
-            customer_data: ClienteModel = {}
-            customer_program = {}
+            customer_data = {}
             customer_data["id_tipo_doc"] = 1
             customer_data["num_documento"] = res["client"]["clientId"]["number"]
             customer_data["nombre_cliente"] = res["client"]["name"]["firstName"]
             customer_data["apellido_cliente"] = res["client"]["name"]["firstSurname"]
             customer_data["email_cliente"] = res["client"]["email"]
-            if data_to_validate["programa"] == "CCV":
-                for program in res["client"]["groups"]:
-                    if program["groupValue"]["groupName"] == "CLUB CRUZ VERDE":
-                        customer_program["id_plan"] = 2
-                        customer_program["fecha_inscripcion"] = program[
-                            "creationSource"
-                        ]["date"]
-            elif data_to_validate["programa"] == "CDC":
-                for program in res["client"]["groups"]:
-                    if program["groupValue"]["groupName"] == "CLUB DERMO":
-                        customer_program["id_plan"] = 1
-                        customer_program["fecha_inscripcion"] = program[
-                            "creationSource"
-                        ]["date"]
-            return customer_data, customer_program
+            for program in res["client"]["groups"]:
+                if program["groupValue"]["groupName"] == "CLUB CRUZ VERDE":
+                    fecha_inscripcion = program["creationSource"]["date"]
+            return customer_data, fecha_inscripcion
         else:
             return False
     except HTTPException as httperror:
@@ -110,61 +98,67 @@ def get_data():
     image_dir = "./temp"
     abs_image_dir = path.abspath(image_dir)
     data_dir = listdir(abs_image_dir)
-    image_to_save: ImageModel = {}
+    image_to_save = {}
     while len(data_dir) > 0:
-        print('Cargando imagen...')
-        image_to_pop = data_dir.pop()
-        id_user = get_user_id(image_to_pop)
-        last_image_path = f"{abs_image_dir}/{image_to_pop}"
-        ocr_data = read_image(last_image_path)
-        id_registro = create_register()
-        data_to_validate = create_data_object(ocr_data)
-        if (
-            "num_documento" in data_to_validate
-            and data_to_validate["num_documento"] != "" "programa" in data_to_validate
-            and data_to_validate["programa"] != ""
-        ):
-            data_from_loyalty = validate_data_loyalty(data_to_validate)
-            customer_data_loyalty = data_from_loyalty[0]
-            program_data_loyalty = data_from_loyalty[1]
-            numero_doc_customer = create_customer(customer_data_loyalty)
-            program_data_loyalty["id_registro"] = id_registro
-            create_plan_cliente(program_data_loyalty)
-            update_register_data = {
-                "no_doc_cliente": numero_doc_customer,
-                "id_estado": 1,
-            }
-            update_register(id_registro, update_register_data)
-            if customer_data_loyalty != False:
-                file_name = f"CC_{customer_data_loyalty['num_documento']}-{data_to_validate['programa']}.jpg"
-                dir_destination = "coincide"
+        print("Cargando imagen...")
+        try:
+            image_to_pop = data_dir.pop()
+            id_user = get_user_id(image_to_pop)
+            last_image_path = f"{abs_image_dir}/{image_to_pop}"
+            ocr_data = read_image(last_image_path)
+            id_registro = create_register()
+            data_to_validate = create_data_object(ocr_data)
+            if (
+                "num_documento" in data_to_validate[0]
+                and data_to_validate[0]["num_documento"] != ""
+            ):
+                data_from_loyalty = validate_data_loyalty(data_to_validate[0])
+                if data_from_loyalty != False:
+                    customer_data_loyalty = data_from_loyalty[0]
+                    numero_doc_customer = create_customer(customer_data_loyalty)
+                    update_register_data = {
+                        "no_doc_cliente": numero_doc_customer,
+                        "id_estado": 1,
+                        "fecha_inscripcion": data_from_loyalty[1],
+                        "firma": data_to_validate[1],
+                    }
+                    update_register(id_registro, update_register_data)
+                    if customer_data_loyalty != False:
+                        file_name = f"CC_{customer_data_loyalty['num_documento']}.jpg"
+                        dir_destination = "coincide"
+                        upload_file(
+                            file_name=file_name,
+                            destination_dir=dir_destination,
+                            file_path=last_image_path,
+                        )
+                        path_ftp_file = get_path_files(dir_destination, file_name)
+                        image_to_save = {
+                            "id_usuario": id_user,
+                            "id_registro": id_registro,
+                            "nombre_archivo": file_name,
+                            "path_archivo": path_ftp_file,
+                        }
+                        create_image(image_to_save)
+            else:
+                dir_destination = "no_data"
+                path_ftp_file = get_path_files(dir_destination, image_to_pop)
                 upload_file(
-                    file_name=file_name,
-                    destination_dir=dir_destination,
+                    file_name=f"{image_to_pop}",
                     file_path=last_image_path,
+                    destination_dir=dir_destination,
                 )
-                path_ftp_file = get_path_files(dir_destination, file_name)
                 image_to_save = {
                     "id_usuario": id_user,
                     "id_registro": id_registro,
-                    "nombre_archivo": file_name,
+                    "nombre_archivo": image_to_pop,
                     "path_archivo": path_ftp_file,
                 }
                 create_image(image_to_save)
-        else:
-            dir_destination = "no_data"
-            path_ftp_file = get_path_files(dir_destination, image_to_pop)
-            upload_file(
-                file_name=f"{image_to_pop}.jpg",
-                file_path=last_image_path,
-                destination_dir=dir_destination,
-            )
-            image_to_save = {
-                "id_usuario": id_user,
-                "id_registro": id_registro,
-                "nombre_archivo": image_to_pop,
-                "path_archivo": path_ftp_file,
-            }
-            create_image(image_to_save)
-        remove(last_image_path)
-    print("La imagen se proceso correctamente")
+            remove(last_image_path)
+            print("La imagen se proceso correctamente")
+            return {'message': 'La imagen se procesó correctamente', 'status_code': 200}
+        except Exception as e:
+            print(e)
+            delete_register(id_registro)
+            remove(last_image_path)
+            return {'message':'Error al procesar la imagen, por favor intente de nuevo o comuníquese con el área técnica.', 'status_code': 500}
