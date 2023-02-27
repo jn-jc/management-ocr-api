@@ -11,8 +11,7 @@ from models.getData_model import GetDataModel
 from modules.ftp_module.ftp import get_path_files, upload_file
 from modules.querys_db.clientes.create_customer import create_customer
 from modules.querys_db.imagen.create_image import create_image
-from modules.querys_db.registro.create_register import (create_register,
-                                                        delete_register)
+from modules.querys_db.registro.create_register import create_register, delete_register
 from modules.querys_db.registro.update_register import update_register
 
 load_dotenv()
@@ -139,6 +138,21 @@ def get_data():
                             "path_archivo": path_ftp_file,
                         }
                         create_image(image_to_save)
+                else:
+                    dir_destination = "no_data"
+                    path_ftp_file = get_path_files(dir_destination, image_to_pop)
+                    upload_file(
+                        file_name=f"{image_to_pop}",
+                        file_path=last_image_path,
+                        destination_dir=dir_destination,
+                    )
+                    image_to_save = {
+                        "id_usuario": id_user,
+                        "id_registro": id_registro,
+                        "nombre_archivo": image_to_pop,
+                        "path_archivo": path_ftp_file,
+                    }
+                    create_image(image_to_save)
             else:
                 dir_destination = "no_data"
                 path_ftp_file = get_path_files(dir_destination, image_to_pop)
@@ -156,9 +170,12 @@ def get_data():
                 create_image(image_to_save)
             remove(last_image_path)
             print("La imagen se proceso correctamente")
-            return {'message': 'La imagen se procesó correctamente', 'status_code': 200}
+            return {"message": "La imagen se procesó correctamente", "status_code": 200}
         except Exception as e:
             print(e)
             delete_register(id_registro)
             remove(last_image_path)
-            return {'message':'Error al procesar la imagen, por favor intente de nuevo o comuníquese con el área técnica.', 'status_code': 500}
+            return {
+                "message": "La imagen no pudo ser enviada. Inténtalo más tarde.",
+                "status_code": 500,
+            }
