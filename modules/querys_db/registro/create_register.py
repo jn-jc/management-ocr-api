@@ -3,8 +3,8 @@ from schemas.registro import registro
 from models.registro_model import RegistroModel
 
 
-def create_register():
-    register: RegistroModel = {"id_estado": 2, "firma": 0}
+def create_register(id_estado: int):
+    register: RegistroModel = {"id_estado": id_estado, "firma": 0}
     result = conn.execute(registro.insert().values(register))
     id_registro = result.lastrowid
     return(id_registro)

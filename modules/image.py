@@ -20,10 +20,11 @@ loyalty_url_prod = os.getenv("URL_LOYALTY_WS")
 
 
 def get_user_id(path_str: str):
-    id_position = path_str.find("-")
-    if id_position != -1:
-        customer_id = path_str[:id_position]
-        return customer_id
+    ids = path_str.split("-")
+    if ids != -1:
+        customer_id = ids[1]
+        id_registro = ids[0]
+        return customer_id, id_registro
     return False
 
 
@@ -47,6 +48,7 @@ def read_image(img_path: str):
 
 def create_data_object(data_ocr: list):
     position = 0
+    firma = 0
     data_to_validate = {}
     document_number = ""
     for data in data_ocr[0:10]:
@@ -94,18 +96,20 @@ def validate_data_loyalty(data_to_validate: GetDataModel):
 
 
 def get_data():
-    image_dir = "./temp"
-    abs_image_dir = path.abspath(image_dir)
-    data_dir = listdir(abs_image_dir)
-    image_to_save = {}
-    while len(data_dir) > 0:
-        print("Cargando imagen...")
-        try:
-            image_to_pop = data_dir.pop()
-            id_user = get_user_id(image_to_pop)
-            last_image_path = f"{abs_image_dir}/{image_to_pop}"
+    try:
+        image_dir = "./temp"
+        abs_image_dir = path.abspath(image_dir)
+        data_dir = listdir(abs_image_dir)
+        print(data_dir)
+        print(len(data_dir))
+        image_to_save = {}
+        for image_file in data_dir:
+            print("Cargando imagen...")
+            print(image_file)
+            id_user = get_user_id(image_file)
+            last_image_path = f"{abs_image_dir}/{image_file}"
             ocr_data = read_image(last_image_path)
-            id_registro = create_register()
+            id_registro = id_user[1]
             data_to_validate = create_data_object(ocr_data)
             if (
                 "num_documento" in data_to_validate[0]
@@ -132,50 +136,60 @@ def get_data():
                         )
                         path_ftp_file = get_path_files(dir_destination, file_name)
                         image_to_save = {
-                            "id_usuario": id_user,
+                            "id_usuario": id_user[0],
                             "id_registro": id_registro,
                             "nombre_archivo": file_name,
                             "path_archivo": path_ftp_file,
                         }
                         create_image(image_to_save)
                 else:
+                    update_register(id_registro, {"id_estado": 2})
                     dir_destination = "no_data"
-                    path_ftp_file = get_path_files(dir_destination, image_to_pop)
+                    path_ftp_file = get_path_files(dir_destination, image_file)
                     upload_file(
-                        file_name=f"{image_to_pop}",
+                        file_name=f"{image_file}",
                         file_path=last_image_path,
                         destination_dir=dir_destination,
                     )
                     image_to_save = {
-                        "id_usuario": id_user,
+                        "id_usuario": id_user[0],
                         "id_registro": id_registro,
-                        "nombre_archivo": image_to_pop,
+                        "nombre_archivo": image_file,
                         "path_archivo": path_ftp_file,
                     }
                     create_image(image_to_save)
             else:
+                update_register(id_registro, {"id_estado": 2})
                 dir_destination = "no_data"
-                path_ftp_file = get_path_files(dir_destination, image_to_pop)
+                path_ftp_file = get_path_files(dir_destination, image_file)
                 upload_file(
-                    file_name=f"{image_to_pop}",
+                    file_name=f"{image_file}",
                     file_path=last_image_path,
                     destination_dir=dir_destination,
                 )
                 image_to_save = {
-                    "id_usuario": id_user,
+                    "id_usuario": id_user[0],
                     "id_registro": id_registro,
-                    "nombre_archivo": image_to_pop,
+                    "nombre_archivo": image_file,
                     "path_archivo": path_ftp_file,
                 }
                 create_image(image_to_save)
             remove(last_image_path)
             print("La imagen se proceso correctamente")
-            return {"message": "La imagen se procesó correctamente", "status_code": 200}
-        except Exception as e:
-            print(e)
-            delete_register(id_registro)
-            remove(last_image_path)
-            return {
-                "message": "La imagen no pudo ser enviada. Inténtalo más tarde.",
-                "status_code": 500,
-            }
+    except Exception as e:
+        print(e)
+        delete_register(id_registro)
+        remove(last_image_path)
+        return {
+            "message": "La imagen no pudo ser enviada. Inténtalo más tarde.",
+            "status_code": 500,
+        }
+    return {"message": "La imagen se procesó correctamente", "status_code": 200}
+
+
+def crear_registro():
+    try:
+        id_registro = create_register(id_estado=5)
+        return id_registro
+    except Exception as e:
+        print(e)
