@@ -17,8 +17,8 @@ async def load_images():
 
 @image.post(path="/get-image")
 async def get_image(image: UploadFile = File(...)):
+  id_registro = crear_registro()
   try:
-    id_registro = crear_registro()
     with open(getcwd() + "/temp/" + f'{id_registro}-{image.filename}', "wb") as file:
         content = image.file.read()
         file.write(content)
